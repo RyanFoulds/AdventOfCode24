@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,27 +9,20 @@ import (
 
 func main() {
 	filePath := os.Args[1]
-	file, err := os.Open(filePath)
+	file, err := os.ReadFile(filePath)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	var sum int
-	scanner := bufio.NewScanner(file)
-	var fullFile string
-	for scanner.Scan() {
-		line := scanner.Text()
-		fullFile += line
-		sum += parse(line)
-	}
-	fmt.Println(sum)
-	fmt.Println(parseConditionally(fullFile))
+	fileContents := string(file)
+	fmt.Println(parse(fileContents))
+	fmt.Println(parseConditionally(fileContents))
 }
 
-func parse(line string) int {
+func parse(input string) int {
 	var sumOfProducts int
 
-	candidates := strings.Split(line, "mul(")
+	candidates := strings.Split(input, "mul(")
 	for _, candidate := range candidates {
 		closingIndex := strings.Index(candidate, ")")
 		if closingIndex < 3 {
@@ -54,9 +46,9 @@ func parse(line string) int {
 	return sumOfProducts
 }
 
-func parseConditionally(line string) int {
+func parseConditionally(input string) int {
 	var sum int
-	splits := strings.Split(line, "do()")
+	splits := strings.Split(input, "do()")
 	for _, split := range splits {
 		closingIndex := strings.Index(split, "don't()")
 		if closingIndex > 0 {
