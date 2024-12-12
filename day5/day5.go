@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -27,7 +28,7 @@ func main() {
 		if isValidUpdate(update, rules) {
 			validMiddlePagesSum += extractMiddlePage(strings.Split(update, ","))
 		} else {
-			sortedUpdate := sort(update, rules)
+			sortedUpdate := sortedSlice(update, rules)
 			invalidMiddlePagesSum += extractMiddlePage(sortedUpdate)
 		}
 	}
@@ -81,7 +82,14 @@ func extractMiddlePage(update []string) int {
 	return int(value)
 }
 
-func sort(update string, rules map[string]map[string]struct{}) []string {
-	// TODO: Implement this shit properly.
-	return strings.Split(update, ",")
+func sortedSlice(update string, rules map[string]map[string]struct{}) []string {
+	updateSlice := strings.Split(update, ",")
+	sort.Slice(updateSlice, func(i, j int) bool {
+		left := updateSlice[i]
+		right := updateSlice[j]
+		leftMustPrecede := rules[left]
+		_, contained := leftMustPrecede[right]
+		return contained
+	})
+	return updateSlice
 }
