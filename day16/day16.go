@@ -18,8 +18,9 @@ func main() {
 	}
 	fileContents := strings.TrimFunc(string(file), unicode.IsSpace)
 	m := maze.NewMaze(fileContents)
-	lowScore := m.Search()
-	fmt.Println(lowScore)
-	tileCount := m.CountTilesOnWinningPaths()
-	fmt.Println(tileCount)
+
+	lowestScore, bestSeatCount := m.Search()
+
+	fmt.Println(lowestScore)
+	fmt.Println(bestSeatCount)
 }
