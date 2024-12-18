@@ -21,4 +21,7 @@ func main() {
 	output := computer.Run()
 	fmt.Println(output)
 
+	computer = cpu.NewComputer(fileContents)
+	minA := computer.Search()
+	fmt.Println(minA)
 }

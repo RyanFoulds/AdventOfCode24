@@ -2,15 +2,16 @@ package cpu
 
 import (
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 )
 
 type cpu struct {
-	A, B, C int
+	A, B, C uint
 }
 
-type program []int
+type program []uint
 
 type Computer struct {
 	c cpu
@@ -25,19 +26,19 @@ func NewComputer(s string) Computer {
 	C, errC := strconv.ParseInt(strings.Split(registers[2], ": ")[1], 10, 0)
 
 	if errA != nil || errB != nil || errC != nil {
-		log.Fatal("Couldn't parse an int!")
+		log.Fatal("Couldn't parse an uint!")
 	}
 
 	program := strings.Split(parts[1], ": ")[1]
-	prog := make([]int, (len(program)+1)/2)
+	prog := make([]uint, (len(program)+1)/2)
 	for i, r := range program {
 		if i%2 == 1 {
 			continue
 		}
-		prog[i/2] = int(r - '0')
+		prog[i/2] = uint(r - '0')
 	}
 
-	return Computer{cpu{int(A), int(B), int(C)}, prog}
+	return Computer{cpu{uint(A), uint(B), uint(C)}, prog}
 }
 
 func (com *Computer) Run() string {
@@ -46,7 +47,7 @@ func (com *Computer) Run() string {
 
 	for i < maxI {
 		opCode := com.p[i]
-		operand := com.p[i+1]
+		operand := uint(com.p[i+1])
 
 		switch opCode {
 		case 0:
@@ -71,49 +72,49 @@ func (com *Computer) Run() string {
 	return strings.Join(out, ",")
 }
 
-func (c *cpu) adv(operand int) {
+func (c *cpu) adv(operand uint) {
 	operand = c.resolveCombo(operand)
 	den := pow2(operand)
 	c.A = c.A / den
 }
 
-func (c *cpu) bxl(operand int) {
+func (c *cpu) bxl(operand uint) {
 	c.B = c.B ^ operand
 }
 
-func (c *cpu) bst(operand int) {
+func (c *cpu) bst(operand uint) {
 	operand = c.resolveCombo(operand)
 	c.B = operand % 8
 }
 
-func (c *cpu) jnz(operand int, currentInstruction int) int {
+func (c *cpu) jnz(operand uint, currentInstruction int) int {
 	if c.A == 0 {
 		return 0
 	}
-	return operand - currentInstruction - 2
+	return int(operand) - currentInstruction - 2
 }
 
-func (c *cpu) bxc(operand int) {
+func (c *cpu) bxc(operand uint) {
 	c.B = c.B ^ c.C
 }
 
-func (c *cpu) out(operand int) string {
-	return strconv.Itoa(c.resolveCombo(operand) % 8)
+func (c *cpu) out(operand uint) string {
+	return strconv.Itoa(int(c.resolveCombo(operand) % 8))
 }
 
-func (c *cpu) bdv(operand int) {
+func (c *cpu) bdv(operand uint) {
 	operand = c.resolveCombo(operand)
 	den := pow2(operand)
 	c.B = c.A / den
 }
 
-func (c *cpu) cdv(operand int) {
+func (c *cpu) cdv(operand uint) {
 	operand = c.resolveCombo(operand)
 	den := pow2(operand)
 	c.C = c.A / den
 }
 
-func (c cpu) resolveCombo(operand int) int {
+func (c cpu) resolveCombo(operand uint) uint {
 	switch operand {
 	case 4:
 		return c.A
@@ -125,7 +126,7 @@ func (c cpu) resolveCombo(operand int) int {
 	return operand
 }
 
-func pow2(n int) int {
+func pow2(n uint) uint {
 	if n == 0 {
 		return 1
 	} else {
@@ -133,4 +134,41 @@ func pow2(n int) int {
 	}
 }
 
-//TODO implement a reverse machine, that computes the initial value of the registers given an output ??
+func withA(com Computer, a uint) Computer {
+	return Computer{cpu{a, com.c.B, com.c.C}, com.p}
+}
+
+func (com Computer) Search() uint {
+	cache := map[uint]struct{}{1: struct{}{}, 2: struct{}{}, 3: struct{}{}, 4: struct{}{}, 5: struct{}{}, 6: struct{}{}, 7: struct{}{}}
+	solutions := make([]uint, 0)
+	strs := make([]string, 0)
+	for _, n := range com.p {
+		strs = append(strs, strconv.Itoa(int(n)))
+	}
+	target := strings.Join(strs, ",")
+
+	queue := []uint{1, 2, 3, 4, 5, 6, 7}
+	var a uint
+
+	for len(queue) > 0 {
+		a, queue = queue[0], queue[1:]
+
+		for i := 0; i < 8; i++ {
+			nextA := a<<3 + uint(i)
+			_, alreadySeen := cache[nextA]
+			if alreadySeen {
+				continue
+			}
+
+			c := withA(com, nextA)
+			output := c.Run()
+
+			if target == output {
+				solutions = append(solutions, nextA)
+			} else if strings.HasSuffix(target, output) {
+				queue = append(queue, nextA)
+			}
+		}
+	}
+	return slices.Min(solutions)
+}
