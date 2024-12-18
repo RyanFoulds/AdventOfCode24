@@ -17,12 +17,12 @@ func main() {
 		log.Fatal("Could not load file", filePath)
 	}
 	fileContents := strings.TrimFunc(string(file), unicode.IsSpace)
-
+	allCoordinates := memory.AllBlockedCoords(fileContents)
 	start, end := memory.Coord{0, 0}, memory.Coord{70, 70}
-	block := memory.CreateBlockedCoords(fileContents, 1024)
-	path, _ := block.ShortestPath(start, end)
-	fmt.Println(path)
 
-	blockage := memory.SearchForBlockage(fileContents, start, end)
+	pathLengthAt1024, _ := memory.ShortestPath(allCoordinates[:1024], start, end)
+	blockage := memory.SearchForBlockage(allCoordinates, start, end)
+
+	fmt.Println(pathLengthAt1024)
 	fmt.Printf("%d,%d\n", blockage.X, blockage.Y)
 }

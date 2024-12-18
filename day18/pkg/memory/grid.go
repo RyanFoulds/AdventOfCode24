@@ -12,11 +12,6 @@ type Coord struct {
 
 type BlockedCoords map[Coord]struct{}
 
-func CreateBlockedCoords(s string, n int) BlockedCoords {
-	allC := allCoords(s)
-	return blockedCoords(allC[:n])
-}
-
 func blockedCoords(coords []Coord) BlockedCoords {
 	bc := make(BlockedCoords)
 	for _, c := range coords {
@@ -25,7 +20,7 @@ func blockedCoords(coords []Coord) BlockedCoords {
 	return bc
 }
 
-func allCoords(s string) []Coord {
+func AllBlockedCoords(s string) []Coord {
 	coordStrs := strings.Split(s, "\n")
 	allC := make([]Coord, len(coordStrs))
 
@@ -51,7 +46,8 @@ func (c Coord) nextCoords() []Coord {
 	return []Coord{Coord{c.X + 1, c.Y}, Coord{c.X - 1, c.Y}, Coord{c.X, c.Y + 1}, Coord{c.X, c.Y - 1}}
 }
 
-func (b BlockedCoords) ShortestPath(start, end Coord) (int, bool) {
+func ShortestPath(coords []Coord, start, end Coord) (int, bool) {
+	b := blockedCoords(coords)
 	visited := map[Coord]int{start: 0}
 	q := []Coord{start}
 	var node Coord
@@ -72,18 +68,13 @@ func (b BlockedCoords) ShortestPath(start, end Coord) (int, bool) {
 	return distance, validPath
 }
 
-func SearchForBlockage(s string, start, end Coord) Coord {
-	allC := allCoords(s)
-	return searchForBlockage(allC, start, end)
-}
-
-func searchForBlockage(allC []Coord, start, end Coord) Coord {
+func SearchForBlockage(allC []Coord, start, end Coord) Coord {
 	l := 1024
 	r := len(allC) - 1
 	m := (l + r) / 2
 
 	for l != m && r != m {
-		_, ok := blockedCoords(allC[:m]).ShortestPath(start, end)
+		_, ok := ShortestPath(allC[:m], start, end)
 
 		if ok {
 			l, r, m = m, r, (m+r)/2
