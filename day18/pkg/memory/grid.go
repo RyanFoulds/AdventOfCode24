@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"container/heap"
 	"log"
 	"strconv"
 	"strings"
@@ -53,54 +52,44 @@ func (c Coord) nextCoords() []Coord {
 }
 
 func (b BlockedCoords) ShortestPath(start, end Coord) (int, bool) {
-	visited := make(map[Coord]int)
+	visited := map[Coord]int{start: 0}
+	q := []Coord{start}
+	var node Coord
 
-	pq := make(PriorityQueue, 0)
-	heap.Init(&pq)
-	item := &Item{
-		value:    start,
-		priority: 0,
-	}
-	heap.Push(&pq, item)
+	for len(q) > 0 {
+		node, q = q[0], q[1:]
 
-	for pq.Len() > 0 {
-		node := heap.Pop(&pq).(*Item)
-
-		for _, c := range node.value.nextCoords() {
+		for _, c := range node.nextCoords() {
 			_, alreadyReached := visited[c]
 			if c.isValidStep(b) && !alreadyReached {
-				nextItem := &Item{
-					value:    c,
-					priority: node.priority - 1,
-				}
-				heap.Push(&pq, nextItem)
-				visited[c] = -1 * nextItem.priority
+				q = append(q, c)
+				visited[c] = visited[node] + 1
 			}
 		}
 	}
+
 	distance, validPath := visited[end]
 	return distance, validPath
 }
 
 func SearchForBlockage(s string, start, end Coord) Coord {
 	allC := allCoords(s)
+	return searchForBlockage(allC, start, end)
+}
+
+func searchForBlockage(allC []Coord, start, end Coord) Coord {
 	l := 1024
 	r := len(allC) - 1
 	m := (l + r) / 2
 
-	for l < r {
-		_, ok1 := blockedCoords(allC[:m-1]).ShortestPath(start, end)
-		_, ok2 := blockedCoords(allC[:m]).ShortestPath(start, end)
-		changed := ok1 != ok2
+	for l != m && r != m {
+		_, ok := blockedCoords(allC[:m]).ShortestPath(start, end)
 
-		if changed {
-			return allC[m-1]
-		} else if ok1 {
+		if ok {
 			l, r, m = m, r, (m+r)/2
 		} else {
 			l, r, m = l, m, (l+m)/2
 		}
-
 	}
-	return Coord{-1, -1}
+	return allC[m]
 }

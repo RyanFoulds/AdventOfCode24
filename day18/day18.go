@@ -24,5 +24,5 @@ func main() {
 	fmt.Println(path)
 
 	blockage := memory.SearchForBlockage(fileContents, start, end)
-	fmt.Println(blockage)
+	fmt.Printf("%d,%d\n", blockage.X, blockage.Y)
 }
