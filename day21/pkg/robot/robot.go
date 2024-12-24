@@ -1,11 +1,8 @@
 package robot
 
 import (
-	"fmt"
 	"log"
-	"math"
 	"strconv"
-	"strings"
 )
 
 var coordOfVal map[rune]coord = map[rune]coord{
@@ -52,6 +49,13 @@ var dirPad map[coord]rune = map[coord] rune {
   {1,2} : '>',
 }
 
+type key struct {
+  seq string
+  depth int
+}
+
+var cache map[key]int = make(map[key]int)
+
 type coord struct {
   i, j int
 }
@@ -61,28 +65,14 @@ type KeyPadRobot struct {
   r rune
 }
 
-func GetAllShortestSequences(code string) []string {
-  robot := KeyPadRobot{coordOfVal['A'], 'A'}
-  retVal := []string{""}
-
-  for _, target := range code {
-    nextRetVal := make([]string, 0)
-    extras := robot.getShortestSequences(target)
-    for _, existing := range retVal {
-      for _, extra := range extras {
-        nextRetVal = append(nextRetVal, existing+extra)
-      }
-    }
-    retVal = nextRetVal
+func getShortestSequenceTo(start rune, target rune, isNumpad bool) []rune {
+  var startCoord, targetCoord coord
+  if isNumpad {
+    startCoord, targetCoord = coordOfVal[start], coordOfVal[target] 
+  } else {
+    startCoord, targetCoord = coordOfArrow[start], coordOfArrow[target]
   }
-
-  return retVal
-}
-
-func (robot *KeyPadRobot) getShortestSequences(target rune) []string {
-  retVal := make([]string, 0)
-  targetCoord := coordOfVal[target]
-  right, down := targetCoord.j - robot.c.j, targetCoord.i - robot.c.i
+  right, down := targetCoord.j - startCoord.j, targetCoord.i - startCoord.i
 
   var upDown rune
   var rightLeft rune
@@ -97,45 +87,62 @@ func (robot *KeyPadRobot) getShortestSequences(target rune) []string {
     upDown = 'v'
   }
 
+  path := make([]rune, 0)
   // All L/R first
-  if isLeftFirstValid(robot.c, targetCoord) {
-    var rlBuilder strings.Builder
+  if isLeftFirst(startCoord, targetCoord, isNumpad) {
     for i:=0; i<abs(right); i++ {
-      rlBuilder.WriteRune(rightLeft)
+      path = append(path, rightLeft)
     }
     for i:=0; i<abs(down); i++ {
-      rlBuilder.WriteRune(upDown)
+      path = append(path, upDown)
     }
-    rlBuilder.WriteRune('A')
-    retVal = append(retVal, rlBuilder.String())
-  }
-
-  // All U/D first
-  if isDownFirstValid(robot.c, targetCoord) {
-    var udBuilder strings.Builder
+    path = append(path, 'A')
+    return path
+  } else {
     for i := 0; i<abs(down); i++ {
-      udBuilder.WriteRune(upDown)
+      path = append(path, upDown)
     }
     for i:=0; i<abs(right); i++ {
-      udBuilder.WriteRune(rightLeft)
+      path = append(path, rightLeft)
     }
-    udBuilder.WriteRune('A')
-    ud := udBuilder.String()
-    if len(retVal) < 1 || retVal[0] != ud {
-      retVal = append(retVal, ud)
-    }
+    path = append(path, 'A')
+    return path
   }
-  robot.c = targetCoord
-  robot.r = target
-  return retVal
 }
 
-func isLeftFirstValid(start, end coord) bool {
-  return !(start.i == 3 && end.j == 0)
+func dfs(k key) (sum int) {
+  if v, ok := cache[k]; ok {
+    return v
+  }
+  if k.depth == 0 {
+    return len(k.seq)
+  }
+  prev := 'A'
+
+  paths := make([][]rune, 0)
+  for _, c := range k.seq {
+    paths = append(paths, getShortestSequenceTo(prev, c, false))
+    prev = c
+  }
+  for _, path := range paths {
+    sum += dfs(key{string(path), k.depth-1})
+  }
+
+  cache[k] = sum
+  return
+
 }
 
-func isDownFirstValid(start, end coord) bool {
-  return !(start.j == 0 && end.i == 3)
+func isLeftFirst(start coord, end coord, isNumpad bool) bool {
+  if isNumpad {
+    crossGap := (start.i == 3 && end.j == 0) || (start.j == 0 && end.i == 3)
+    left := end.j < start.j
+    return left != crossGap
+  } else {
+    crossGap := (start.i == 0 && end.j == 0) || (start.j == 0 && end.i == 0)
+    left := end.j < start.j
+    return left != crossGap
+  }
 }
 
 func abs(n int) int {
@@ -146,99 +153,6 @@ func abs(n int) int {
   }
 }
 
-func getShortestDpadInputLengthForCode(code string, intermediateDpads int) int {
-  inputs := GetAllShortestSequences(code)
-
-  for i:=0; i<intermediateDpads; i++ {
-    fmt.Println(len(inputs[0]))
-    inputs = getAllShortestDpadSequences(inputs[0:1])
-  }
-  return len(inputs[0])
-}
-
-func getAllShortestDpadSequences(shortestOutputs []string) []string {
-  var retVal []string
-  shortestLength := math.MaxInt
-  for _, output := range shortestOutputs {
-    inputs := getAllShortestDistancesFirstDirPad(output)
-    
-    if len(inputs[0]) < shortestLength {
-      retVal = inputs
-      shortestLength = len(inputs[0])
-    } else if len(inputs[0]) == shortestLength {
-      retVal = append(retVal, inputs...)
-    }
-  }
-  return retVal
-}
-
-func getAllShortestDistancesFirstDirPad(buttonSequence string) []string {
-  robot := KeyPadRobot{coordOfArrow['A'], 'A'}
-  retVal := []string{""}
-
-  for _, target := range buttonSequence {
-    nextRetVal := make([]string, 0)
-    extras := robot.getShortestDirPadSequences(target)
-    for _, existing := range retVal {
-      for _, extra := range extras {
-        nextRetVal = append(nextRetVal, existing+extra)
-      }
-    }
-    retVal = nextRetVal
-  }
-  
-  return retVal
-}
-
-func (robot *KeyPadRobot) getShortestDirPadSequences(target rune) []string {
-  retVal := make([]string, 0)
-  targetCoord := coordOfArrow[target]
-  upDown, leftRight := getHorizontalAndVerticalButtons(robot.c, targetCoord)
-
-  if isUpFirstValidDirPad(robot.c, targetCoord) {
-    var udBuilder strings.Builder
-    if robot.c.i != targetCoord.i {
-      udBuilder.WriteRune(upDown)
-    }
-    for i := 0; i<abs(targetCoord.j - robot.c.j); i++ {
-      udBuilder.WriteRune(leftRight)
-    }
-    udBuilder.WriteRune('A')
-    retVal = append(retVal, udBuilder.String())
-  }
-  if isLeftFirstValidDirPad(robot.c ,targetCoord) {
-    var lrBuilder strings.Builder
-    for i:=0; i<abs(targetCoord.j - robot.c.j); i++ {
-      lrBuilder.WriteRune(leftRight)
-    }
-    if robot.c.i != targetCoord.i {
-      lrBuilder.WriteRune(upDown)
-    }
-    lrBuilder.WriteRune('A')
-    lr := lrBuilder.String()
-    if len(retVal) < 1 || retVal[0] != lr {
-      retVal = append(retVal, lr)
-    }
-  }
-  robot.c = targetCoord
-  robot.r = target
-  return retVal
-}
-
-func getHorizontalAndVerticalButtons(start, end coord) (upDown, leftRight rune) {
-  if end.j > start.j {
-    leftRight = '>'
-  } else {
-    leftRight = '<'
-  }
-  if end.i > start.i {
-    upDown = 'v'
-  } else {
-    upDown = '^'
-  }
-  return
-}
-
 func isUpFirstValidDirPad(start, end coord) bool {
   return !(start.j == 0 && end.i == 0)
 }
@@ -247,15 +161,27 @@ func isLeftFirstValidDirPad(start, end coord) bool {
   return !(start.i == 0 && end.j == 0)
 }
 
-func Solve(codes []string, intermediateDpads int) (sum int) {
+func Solve(codes []string, depth int) (retval int) {
   for _, code := range codes {
     num, err := strconv.ParseInt(code[:len(code)-1], 10, 0)
     if err != nil {
-      log.Fatal("Badly formatted code:", code)
+      log.Fatal("Couldn't parse number in code", code)
     }
-    inputLength := getShortestDpadInputLengthForCode(code, intermediateDpads)
-    sum += inputLength*int(num)
-  }
 
+    path := make([][]rune, 0)
+    prev := 'A'
+    for _, c := range code {
+      path = append(path, getShortestSequenceTo(prev, c, true))
+      prev = c
+    }
+
+    length := 0
+    for _, p := range path {
+      length += dfs(key{string(p), depth})
+    }
+
+    retval += int(num) * length
+  }
   return
 }
+
